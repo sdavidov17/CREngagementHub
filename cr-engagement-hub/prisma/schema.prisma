@@ -1,0 +1,320 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User entity and authentication
+model User {
+  id                String     @id @default(uuid())
+  email             String     @unique
+  name              String
+  password          String?
+  role              UserRole
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  teamMember        TeamMember? @relation(fields: [teamMemberId], references: [id])
+  teamMemberId      String?    @unique
+  
+  // Relations
+  engagementsLed    Engagement[] @relation("EngagementLead")
+  clientsManaged    Client[]     @relation("ClientManager")
+  meetingsCreated   Meeting[]    @relation("MeetingCreator")
+  meetingsAttended  MeetingAttendee[]
+  actionItems       ActionItem[] @relation("ActionItemAssignee")
+  okrUpdates        OKRUpdate[]
+}
+
+enum UserRole {
+  ADMIN
+  DELIVERY_LEAD
+  ENGAGEMENT_LEAD
+  TEAM_MEMBER
+  PROJECT_COORDINATOR
+  LEADERSHIP
+}
+
+// Client entity
+model Client {
+  id               String        @id @default(uuid())
+  name             String
+  description      String?
+  logo             String?
+  primaryContact   String?
+  primaryEmail     String?
+  primaryPhone     String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  managers         User[]        @relation("ClientManager")
+  
+  // Relations
+  engagements      Engagement[]
+}
+
+// Engagement entity
+model Engagement {
+  id                String        @id @default(uuid())
+  name              String
+  description       String?
+  startDate         DateTime
+  endDate           DateTime?
+  status            EngagementStatus
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  // Relations
+  client            Client        @relation(fields: [clientId], references: [id])
+  clientId          String
+  lead              User          @relation("EngagementLead", fields: [leadId], references: [id])
+  leadId            String
+  teamAllocations   TeamMemberAllocation[]
+  okrs              OKR[]
+  meetings          Meeting[]
+}
+
+enum EngagementStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+// Team Member entity
+model TeamMember {
+  id                String        @id @default(uuid())
+  name              String
+  email             String        @unique
+  title             String?
+  photoUrl          String?
+  bio               String?
+  startDate         DateTime
+  endDate           DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  // Relations
+  user              User?
+  allocations       TeamMemberAllocation[]
+  skillsets         TeamMemberSkill[]
+  meetingsAttended  MeetingAttendee[]
+}
+
+// Team Member Allocation
+model TeamMemberAllocation {
+  id              String        @id @default(uuid())
+  startDate       DateTime
+  endDate         DateTime?
+  allocationPercentage Int
+  role            String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  teamMember     TeamMember     @relation(fields: [teamMemberId], references: [id])
+  teamMemberId   String
+  engagement     Engagement     @relation(fields: [engagementId], references: [id])
+  engagementId   String
+
+  @@unique([teamMemberId, engagementId, startDate])
+}
+
+// Skill
+model Skill {
+  id               String        @id @default(uuid())
+  name             String        @unique
+  category         String?
+  
+  // Relations
+  teamMembers      TeamMemberSkill[]
+}
+
+// Team Member Skill
+model TeamMemberSkill {
+  id              String        @id @default(uuid())
+  proficiencyLevel Int?         // 1-5 scale
+  yearsOfExperience Float?
+  
+  // Relations
+  teamMember     TeamMember     @relation(fields: [teamMemberId], references: [id])
+  teamMemberId   String
+  skill          Skill          @relation(fields: [skillId], references: [id])
+  skillId        String
+
+  @@unique([teamMemberId, skillId])
+}
+
+// Objectives and Key Results
+model OKR {
+  id              String        @id @default(uuid())
+  title           String
+  description     String?
+  type            OKRType
+  targetValue     Float?
+  startValue      Float?
+  quarter         String        // e.g. "Q1-2023"
+  status          OKRStatus
+  weight          Int?          // Priority weight, if applicable
+  startDate       DateTime
+  targetDate      DateTime
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  engagement      Engagement    @relation(fields: [engagementId], references: [id])
+  engagementId    String
+  parent          OKR?          @relation("OKRHierarchy", fields: [parentId], references: [id])
+  parentId        String?
+  children        OKR[]         @relation("OKRHierarchy")
+  updates         OKRUpdate[]
+  deliverables    Deliverable[]
+}
+
+enum OKRType {
+  OBJECTIVE
+  KEY_RESULT
+}
+
+enum OKRStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  AT_RISK
+  ON_TRACK
+  COMPLETED
+}
+
+// OKR Updates
+model OKRUpdate {
+  id              String        @id @default(uuid())
+  currentValue    Float?
+  notes           String?
+  supportingLinks String?
+  updateDate      DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  okr             OKR           @relation(fields: [okrId], references: [id])
+  okrId           String
+  updatedBy       User          @relation(fields: [updatedById], references: [id])
+  updatedById     String
+
+  @@index([okrId, updateDate])
+}
+
+// Deliverables
+model Deliverable {
+  id              String        @id @default(uuid())
+  title           String
+  description     String?
+  status          DeliverableStatus
+  dueDate         DateTime?
+  completedDate   DateTime?
+  documentLink    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  okr             OKR           @relation(fields: [okrId], references: [id])
+  okrId           String
+}
+
+enum DeliverableStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+// Meetings
+model Meeting {
+  id              String        @id @default(uuid())
+  title           String
+  description     String?
+  startTime       DateTime
+  endTime         DateTime
+  location        String?
+  isRecurring     Boolean       @default(false)
+  recurrenceRule  String?       // RRULE format for recurring meetings
+  meetingType     MeetingType   
+  meetingLink     String?       // Zoom/Teams/Meet link
+  notes           String?       // Meeting notes or minutes
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  engagement      Engagement    @relation(fields: [engagementId], references: [id])
+  engagementId    String
+  creator         User          @relation("MeetingCreator", fields: [creatorId], references: [id])
+  creatorId       String
+  attendees       MeetingAttendee[]
+  actionItems     ActionItem[]
+}
+
+enum MeetingType {
+  PLANNING
+  STATUS_UPDATE
+  GOVERNANCE
+  REVIEW
+  RETROSPECTIVE
+  OTHER
+}
+
+// Meeting Attendees
+model MeetingAttendee {
+  id              String        @id @default(uuid())
+  status          AttendeeStatus
+  
+  // Relations
+  meeting         Meeting       @relation(fields: [meetingId], references: [id])
+  meetingId       String
+  user            User?         @relation(fields: [userId], references: [id])
+  userId          String?
+  teamMember      TeamMember?   @relation(fields: [teamMemberId], references: [id])
+  teamMemberId    String?
+
+  @@unique([meetingId, userId])
+  @@unique([meetingId, teamMemberId])
+}
+
+enum AttendeeStatus {
+  INVITED
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+  NO_RESPONSE
+}
+
+// Action Items from Meetings
+model ActionItem {
+  id              String        @id @default(uuid())
+  description     String
+  dueDate         DateTime?
+  status          ActionItemStatus
+  completedDate   DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  
+  // Relations
+  meeting         Meeting       @relation(fields: [meetingId], references: [id])
+  meetingId       String
+  assignee        User          @relation("ActionItemAssignee", fields: [assigneeId], references: [id])
+  assigneeId      String
+}
+
+enum ActionItemStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
