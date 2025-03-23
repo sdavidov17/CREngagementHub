@@ -32,6 +32,204 @@ graph TD
     Middleware --> NextAPI
 ```
 
+## Database Schema
+
+```mermaid
+erDiagram
+    User {
+        string id PK
+        string name
+        string email
+        string role
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Client {
+        string id PK
+        string name
+        string industry
+        string contactName
+        string contactEmail
+        string contactPhone
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Engagement {
+        string id PK
+        string name
+        string description
+        string clientId FK
+        string status
+        date startDate
+        date endDate
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Team {
+        string id PK
+        string name
+        string description
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    TeamMember {
+        string id PK
+        string userId FK
+        string teamId FK
+        string role
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    EngagementTeam {
+        string id PK
+        string engagementId FK
+        string teamMemberId FK
+        string role
+        date startDate
+        date endDate
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Objective {
+        string id PK
+        string title
+        string description
+        string engagementId FK
+        string ownerId FK
+        string status
+        string quarter
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    KeyResult {
+        string id PK
+        string title
+        string description
+        string objectiveId FK
+        string ownerId FK
+        number target
+        number current
+        string status
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    SuccessMetric {
+        string id PK
+        string name
+        string description
+        string engagementId FK
+        string format
+        number target
+        number current
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    RagStatus {
+        string id PK
+        string entity
+        string entityId FK
+        string status
+        string comment
+        string updatedBy FK
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Meeting {
+        string id PK
+        string title
+        string description
+        string engagementId FK
+        string meetingTypeId FK
+        datetime scheduledAt
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    MeetingType {
+        string id PK
+        string name
+        string description
+        string cadence
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    AgendaItem {
+        string id PK
+        string title
+        string description
+        string meetingId FK
+        string ownerId FK
+        number duration
+        string status
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    StakeholderMapping {
+        string id PK
+        string engagementId FK
+        string name
+        string role
+        string influence
+        string interest
+        string strategy
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Notice {
+        string id PK
+        string title
+        string content
+        string priority
+        boolean isRead
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Document {
+        string id PK
+        string name
+        string filepath
+        string entityType
+        string entityId FK
+        string uploadedBy FK
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Client ||--o{ Engagement : "has"
+    Engagement ||--o{ EngagementTeam : "has"
+    Team ||--o{ TeamMember : "includes"
+    User ||--o{ TeamMember : "is"
+    TeamMember ||--o{ EngagementTeam : "assigned to"
+    Engagement ||--o{ Objective : "has"
+    Objective ||--o{ KeyResult : "has"
+    User ||--o{ Objective : "owns"
+    User ||--o{ KeyResult : "owns"
+    Engagement ||--o{ SuccessMetric : "tracks"
+    User ||--o{ RagStatus : "updates"
+    Engagement ||--o{ Meeting : "schedules"
+    MeetingType ||--o{ Meeting : "categorizes"
+    Meeting ||--o{ AgendaItem : "contains"
+    User ||--o{ AgendaItem : "owns"
+    Engagement ||--o{ StakeholderMapping : "maps"
+    User ||--o{ Document : "uploads"
+    Client ||--o{ Document : "has"
+    Engagement ||--o{ Document : "has"
+```
+
 ## Component Architecture
 
 ```mermaid
