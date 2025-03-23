@@ -15,6 +15,10 @@ A comprehensive Team and Capacity Management application that allows delivery le
 - **Success Metrics**: Monitor and visualize key performance indicators and success metrics
 - **Notice Board**: Share important announcements and notifications across teams
 
+## Documentation
+
+- [Solution Design](./docs/solution-design.md) - Architecture diagrams and database schema
+
 ## Technologies
 
 - **Frontend**: Next.js, React, TypeScript, Tailwind CSS
@@ -138,6 +142,8 @@ cr-engagement-hub/
 │   │   │   ├── schema.prisma # Database schema
 │   │   │   ├── seed.ts       # Seed script
 │   │   └── public/           # Static assets
+├── docs/                     # Documentation
+│   ├── solution-design.md    # Architecture and database diagrams
 ```
 
 ## Key Pages and Components
