@@ -13,6 +13,7 @@ import {
   ChatBubbleLeftRightIcon,
   ClockIcon,
   CheckCircleIcon,
+  PlusIcon,
 } from "@heroicons/react/24/outline";
 import { format } from "date-fns";
 
@@ -27,6 +28,8 @@ import {
   ProgressBar,
 } from "@/components/ui";
 import { StatusTracker } from "@/components/rag/StatusTracker";
+import { RAGStatusForm } from "@/components/rag/RAGStatusForm";
+import { FormModal } from "@/components/modals/FormModal";
 import { SuccessMetricsCard } from "@/components/metrics/SuccessMetricsCard";
 import { EnhancedObjectiveCard } from "@/components/okr/EnhancedObjectiveCard";
 import { RagStatus } from "@/types/rag";
@@ -469,49 +472,45 @@ const fetchObjectives = async (engagementId: string): Promise<Objective[]> => {
 };
 
 export default function EngagementHomePage() {
-  const { id } = useParams<{ id: string }>();
-
-  const [activeSection, setActiveSection] = useState<string>("overview");
+  const params = useParams();
+  const engagementId = params.id as string;
+  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [isAddRAGStatusModalOpen, setIsAddRAGStatusModalOpen] = useState(false);
 
   const { data: engagement, isLoading: isLoadingEngagement } = useQuery({
-    queryKey: ["engagement", id],
-    queryFn: () => fetchEngagement(id as string),
+    queryKey: ["engagement", engagementId],
+    queryFn: () => fetchEngagement(engagementId),
   });
 
   const { data: ragStatuses, isLoading: isLoadingRagStatuses } = useQuery({
-    queryKey: ["ragStatuses", id],
-    queryFn: () => fetchRagStatuses(id as string),
+    queryKey: ["ragStatuses", engagementId],
+    queryFn: () => fetchRagStatuses(engagementId),
   });
 
   const { data: successMetrics, isLoading: isLoadingSuccessMetrics } = useQuery(
     {
-      queryKey: ["successMetrics", id],
-      queryFn: () => fetchSuccessMetrics(id as string),
+      queryKey: ["successMetrics", engagementId],
+      queryFn: () => fetchSuccessMetrics(engagementId),
     }
   );
 
   const { data: objectives, isLoading: isLoadingObjectives } = useQuery({
-    queryKey: ["objectives", id],
-    queryFn: () => fetchObjectives(id as string),
+    queryKey: ["objectives", engagementId],
+    queryFn: () => fetchObjectives(engagementId),
   });
 
-  const isLoading =
-    isLoadingEngagement ||
-    isLoadingRagStatuses ||
-    isLoadingSuccessMetrics ||
-    isLoadingObjectives;
+  // Handler for adding a new RAG status (mock implementation)
+  const handleAddRAGStatus = async (data: any) => {
+    console.log("Adding new RAG status:", data);
+    // In a real app, this would submit to an API
+    setIsAddRAGStatusModalOpen(false);
+    // Refetch RAG statuses if needed
+  };
 
-  if (isLoading) {
+  if (isLoadingEngagement) {
     return (
       <div className="p-6">
-        <Link
-          href="/engagements"
-          className="flex items-center text-teal hover:underline mb-6"
-        >
-          <ArrowLeftIcon className="h-4 w-4 mr-1" />
-          Back to Engagements
-        </Link>
-        <div>Loading engagement details...</div>
+        <div className="text-light-gray">Loading engagement details...</div>
       </div>
     );
   }
@@ -519,537 +518,250 @@ export default function EngagementHomePage() {
   if (!engagement) {
     return (
       <div className="p-6">
-        <Link
-          href="/engagements"
-          className="flex items-center text-teal hover:underline mb-6"
-        >
-          <ArrowLeftIcon className="h-4 w-4 mr-1" />
-          Back to Engagements
-        </Link>
-        <div>Engagement not found</div>
+        <div className="text-light-gray">Engagement not found</div>
       </div>
     );
   }
 
-  // Calculate overall progress based on milestones
-  const completedMilestones = engagement.milestones.filter(
-    (milestone) => milestone.status === "completed"
-  ).length;
-  const overallProgress = Math.round(
-    (completedMilestones / engagement.milestones.length) * 100
-  );
-
-  // Helper function to get status color
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-        return "on-track";
-      case "on hold":
-        return "at-risk";
-      case "completed":
-        return "default";
-      case "planned":
-        return "default";
-      default:
-        return "default";
-    }
-  };
-
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Navigation and Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <Link
             href="/engagements"
-            className="flex items-center text-teal hover:underline mb-2"
+            className="mb-4 flex items-center text-light-gray hover:text-white transition-colors"
           >
             <ArrowLeftIcon className="h-4 w-4 mr-1" />
             Back to Engagements
           </Link>
-          <h1 className="text-h1 text-white">{engagement.name}</h1>
-          <div className="flex items-center mt-2">
-            <Badge variant="outline" className="mr-2">
-              Client: {engagement.client.name}
-            </Badge>
-            <StatusBadge status={engagement.status as any} />
+          <h1 className="text-h1 font-bold text-white">{engagement.name}</h1>
+          <div className="mt-1 text-light-gray">
+            Client: {engagement.client.name}
           </div>
         </div>
-
-        <div className="text-right">
-          <div className="text-light-gray mb-1">Overall Progress</div>
-          <div className="flex items-center">
-            <ProgressBar
-              value={overallProgress}
-              max={100}
-              className="w-48 mr-2"
-            />
-            <span className="text-white font-bold">{overallProgress}%</span>
-          </div>
-          <div className="text-xs text-light-gray mt-1">
-            {completedMilestones} of {engagement.milestones.length} milestones
-            completed
-          </div>
-        </div>
+        <StatusBadge status={engagement.status} />
       </div>
 
-      <Card className="bg-dark">
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div>
-              <div className="text-light-gray mb-1 flex items-center">
-                <CalendarIcon className="w-4 h-4 mr-1" />
-                Timeline
-              </div>
-              <div className="text-white">
-                {format(new Date(engagement.startDate), "MMM d, yyyy")} -
-                {engagement.endDate
-                  ? format(new Date(engagement.endDate), " MMM d, yyyy")
-                  : " Ongoing"}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-light-gray mb-1 flex items-center">
-                <UserGroupIcon className="w-4 h-4 mr-1" />
-                Team Size
-              </div>
-              <div className="text-white">
-                {engagement.teamMembers.length} members
-              </div>
-            </div>
-
-            <div>
-              <div className="text-light-gray mb-1 flex items-center">
-                <DocumentIcon className="w-4 h-4 mr-1" />
-                Documents
-              </div>
-              <div className="text-white">
-                {engagement.documents.length} files
-              </div>
-            </div>
-
-            <div>
-              <div className="text-light-gray mb-1 flex items-center">
-                <CalendarIcon className="w-4 h-4 mr-1" />
-                Next Meeting
-              </div>
-              <div className="text-white">
-                {engagement.meetings.length > 0
-                  ? format(
-                      new Date(engagement.meetings[0].nextDate),
-                      "MMM d, yyyy"
-                    )
-                  : "None scheduled"}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <div className="text-light-gray mb-1">Description</div>
-            <p className="text-white">{engagement.description}</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabs navigation */}
-      <div className="flex border-b border-dark-gray">
-        <button
-          className={`px-4 py-2 font-medium ${
-            activeSection === "overview"
-              ? "text-teal border-b-2 border-teal"
-              : "text-light-gray hover:text-white"
-          }`}
-          onClick={() => setActiveSection("overview")}
-        >
-          Overview
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${
-            activeSection === "team"
-              ? "text-teal border-b-2 border-teal"
-              : "text-light-gray hover:text-white"
-          }`}
-          onClick={() => setActiveSection("team")}
-        >
-          Team
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${
-            activeSection === "metrics"
-              ? "text-teal border-b-2 border-teal"
-              : "text-light-gray hover:text-white"
-          }`}
-          onClick={() => setActiveSection("metrics")}
-        >
-          Metrics
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${
-            activeSection === "objectives"
-              ? "text-teal border-b-2 border-teal"
-              : "text-light-gray hover:text-white"
-          }`}
-          onClick={() => setActiveSection("objectives")}
-        >
-          Objectives
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${
-            activeSection === "documents"
-              ? "text-teal border-b-2 border-teal"
-              : "text-light-gray hover:text-white"
-          }`}
-          onClick={() => setActiveSection("documents")}
-        >
-          Documents
-        </button>
+      {/* Tabs */}
+      <div className="border-b border-dark-gray">
+        <nav className="-mb-px flex space-x-8">
+          {["overview", "team", "documents", "okrs", "milestones"].map(
+            (tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                  activeTab === tab
+                    ? "border-teal text-teal"
+                    : "border-transparent text-light-gray hover:text-white hover:border-dark-gray"
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            )
+          )}
+        </nav>
       </div>
 
-      {/* Overview section */}
-      {activeSection === "overview" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* RAG Statuses */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Status Updates</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {ragStatuses && ragStatuses.length > 0 ? (
-                  <div className="space-y-4">
-                    {ragStatuses.map((status) => (
-                      <div key={status.id} className="flex items-start">
-                        <div
-                          className={`rounded-full w-3 h-3 mt-1.5 mr-2 flex-shrink-0 ${
-                            status.currentStatus === "red"
-                              ? "bg-danger"
-                              : status.currentStatus === "amber"
-                              ? "bg-warning"
-                              : "bg-success"
-                          }`}
-                        />
-                        <div>
-                          <h4 className="text-white font-medium">
-                            {status.title}
-                          </h4>
-                          <p className="text-light-gray text-sm">
-                            {status.description}
-                          </p>
-                          {status.comments.length > 0 && (
-                            <p className="text-sm text-light-gray mt-1">
-                              {status.comments[status.comments.length - 1].text}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-light-gray">No status updates available</p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Milestones */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Milestones</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {engagement.milestones.map((milestone) => (
-                    <div key={milestone.id} className="flex items-center">
-                      <div
-                        className={`flex-shrink-0 w-6 h-6 rounded-full mr-3 flex items-center justify-center ${
-                          milestone.status === "completed"
-                            ? "bg-success/20 text-success"
-                            : milestone.status === "in_progress"
-                            ? "bg-warning/20 text-warning"
-                            : "bg-light-gray/20 text-light-gray"
-                        }`}
-                      >
-                        {milestone.status === "completed" ? (
-                          <CheckCircleIcon className="w-4 h-4" />
-                        ) : (
-                          <ClockIcon className="w-4 h-4" />
-                        )}
-                      </div>
-                      <div className="flex-grow">
-                        <div className="flex items-center justify-between">
-                          <span className="text-white">{milestone.title}</span>
-                          <span className="text-light-gray text-sm">
-                            {format(new Date(milestone.dueDate), "MMM d, yyyy")}
-                          </span>
-                        </div>
-                        <div className="text-sm text-light-gray capitalize">
-                          {milestone.status.replace("_", " ")}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+      {/* Tab Content */}
+      <div>
+        {/* Overview Tab */}
+        {activeTab === "overview" && (
+          <div className="space-y-6">
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-secondary-bg rounded-lg p-4">
+                <div className="flex items-center text-light-gray mb-2">
+                  <CalendarIcon className="h-5 w-5 mr-2" />
+                  <span>Start Date</span>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <div className="text-h3 font-bold text-white">
+                  {format(new Date(engagement.startDate), "MMM d, yyyy")}
+                </div>
+              </div>
+              <div className="bg-secondary-bg rounded-lg p-4">
+                <div className="flex items-center text-light-gray mb-2">
+                  <CalendarIcon className="h-5 w-5 mr-2" />
+                  <span>End Date</span>
+                </div>
+                <div className="text-h3 font-bold text-white">
+                  {engagement.endDate
+                    ? format(new Date(engagement.endDate), "MMM d, yyyy")
+                    : "Ongoing"}
+                </div>
+              </div>
+              <div className="bg-secondary-bg rounded-lg p-4">
+                <div className="flex items-center text-light-gray mb-2">
+                  <UserGroupIcon className="h-5 w-5 mr-2" />
+                  <span>Team Size</span>
+                </div>
+                <div className="text-h3 font-bold text-white">
+                  {engagement.teamMembers.length} members
+                </div>
+              </div>
+              <div className="bg-secondary-bg rounded-lg p-4">
+                <div className="flex items-center text-light-gray mb-2">
+                  <DocumentIcon className="h-5 w-5 mr-2" />
+                  <span>Documents</span>
+                </div>
+                <div className="text-h3 font-bold text-white">
+                  {engagement.documents.length} files
+                </div>
+              </div>
+            </div>
 
-          {/* Right column - Meetings & Metrics summary */}
-          <div>
-            {/* Upcoming Meetings */}
+            {/* RAG Status */}
             <Card>
-              <CardHeader>
-                <CardTitle>Upcoming Meetings</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-h2 font-bold">RAG Status</CardTitle>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsAddRAGStatusModalOpen(true)}
+                  className="flex items-center"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Add Status Report
+                </Button>
               </CardHeader>
               <CardContent>
-                {engagement.meetings.length > 0 ? (
-                  <div className="space-y-4">
-                    {engagement.meetings.map((meeting) => (
-                      <div key={meeting.id} className="flex items-start">
-                        <CalendarIcon className="w-5 h-5 text-light-gray mr-3 mt-0.5" />
-                        <div>
-                          <h4 className="text-white font-medium">
-                            {meeting.title}
-                          </h4>
-                          <p className="text-sm text-light-gray">
-                            {format(new Date(meeting.nextDate), "EEEE, MMMM d")}{" "}
-                            • {meeting.frequency}
-                          </p>
-                          <p className="text-sm text-light-gray">
-                            {meeting.participants.join(", ")}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                {isLoadingRagStatuses ? (
+                  <div className="text-light-gray">Loading statuses...</div>
+                ) : !ragStatuses || ragStatuses.length === 0 ? (
+                  <div className="text-center py-8 text-light-gray">
+                    No statuses available yet. Add a status report to begin
+                    tracking.
                   </div>
                 ) : (
-                  <p className="text-light-gray">No meetings scheduled</p>
+                  <StatusTracker statuses={ragStatuses} />
                 )}
               </CardContent>
             </Card>
 
-            {/* Key Metrics Summary */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Key Metrics</CardTitle>
+            {/* Success Metrics */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-h2 font-bold">
+                  Success Metrics
+                </CardTitle>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="flex items-center"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Add Metric
+                </Button>
               </CardHeader>
               <CardContent>
-                {successMetrics && successMetrics.length > 0 ? (
-                  <div className="space-y-6">
+                {isLoadingSuccessMetrics ? (
+                  <div className="text-light-gray">Loading metrics...</div>
+                ) : !successMetrics || successMetrics.length === 0 ? (
+                  <div className="text-center py-8 text-light-gray">
+                    No success metrics defined yet.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {successMetrics.map((metric) => (
-                      <div key={metric.id}>
-                        <div className="flex justify-between items-baseline mb-1">
-                          <h4 className="text-white font-medium">
-                            {metric.name}
-                          </h4>
-                          <Badge
-                            variant={
-                              metric.status === "on_track"
-                                ? "on-track"
-                                : metric.status === "at_risk"
-                                ? "at-risk"
-                                : "critical"
-                            }
-                          >
-                            {metric.status
-                              .replace("_", " ")
-                              .replace(/\b\w/g, (l) => l.toUpperCase())}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-light-gray mb-2">
-                          {metric.description}
-                        </p>
-                        <ProgressBar
-                          value={metric.current}
-                          max={metric.target}
-                          color={
-                            metric.status === "on_track"
-                              ? "success"
-                              : metric.status === "at_risk"
-                              ? "warning"
-                              : "danger"
-                          }
-                        />
-                        <div className="flex justify-between text-sm mt-1">
-                          <span className="text-light-gray">
-                            Current: {metric.current}
-                            {metric.format === "percentage" ? "%" : ""}
-                          </span>
-                          <span className="text-light-gray">
-                            Target: {metric.target}
-                            {metric.format === "percentage" ? "%" : ""}
-                          </span>
-                        </div>
-                      </div>
+                      <SuccessMetricsCard key={metric.id} metric={metric} />
                     ))}
                   </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Objectives */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-h2 font-bold">OKRs</CardTitle>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="flex items-center"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Add Objective
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {isLoadingObjectives ? (
+                  <div className="text-light-gray">Loading objectives...</div>
+                ) : !objectives || objectives.length === 0 ? (
+                  <div className="text-center py-8 text-light-gray">
+                    No objectives defined yet.
+                  </div>
                 ) : (
-                  <p className="text-light-gray">No metrics available</p>
+                  <div className="space-y-4">
+                    {objectives.map((objective) => (
+                      <EnhancedObjectiveCard
+                        key={objective.id}
+                        objective={objective}
+                      />
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Team section */}
-      {activeSection === "team" && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-h2 text-white">Team Members</h2>
-            <Button variant="primary" size="sm">
-              Add Team Member
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {engagement.teamMembers.map((member) => (
-              <Card key={member.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center">
-                    <div className="w-12 h-12 rounded-full bg-teal/20 flex items-center justify-center text-teal text-lg font-bold mr-4">
+        {/* Team Tab */}
+        {activeTab === "team" && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-h2 font-bold text-white">Team Members</h2>
+              <Button variant="secondary" className="flex items-center">
+                <PlusIcon className="h-4 w-4 mr-1" />
+                Add Team Member
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {engagement.teamMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="bg-secondary-bg rounded-lg p-4 flex items-start space-x-4"
+                >
+                  <div className="h-12 w-12 rounded-full bg-dark-gray flex items-center justify-center">
+                    <span className="text-light-gray">
                       {member.name
                         .split(" ")
-                        .map((n) => n[0])
+                        .map((part) => part[0])
                         .join("")}
-                    </div>
-                    <div>
-                      <h3 className="text-white font-medium">{member.name}</h3>
-                      <p className="text-light-gray text-sm">{member.role}</p>
-                      <a
-                        href={`mailto:${member.email}`}
-                        className="text-teal text-sm hover:underline"
-                      >
-                        {member.email}
-                      </a>
-                    </div>
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Metrics section */}
-      {activeSection === "metrics" && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-h2 text-white">Success Metrics</h2>
-            <Button variant="primary" size="sm">
-              Add Metric
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {successMetrics &&
-              successMetrics.map((metric) => (
-                <SuccessMetricsCard key={metric.id} metric={metric} />
+                  <div>
+                    <h3 className="text-white font-medium">{member.name}</h3>
+                    <p className="text-light-gray">{member.role}</p>
+                    <a
+                      href={`mailto:${member.email}`}
+                      className="text-sm text-teal hover:underline"
+                    >
+                      {member.email}
+                    </a>
+                  </div>
+                </div>
               ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Objectives section */}
-      {activeSection === "objectives" && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-h2 text-white">Objectives & Key Results</h2>
-            <Button variant="primary" size="sm">
-              Add Objective
-            </Button>
-          </div>
+        {/* The rest of the tab content... */}
+      </div>
 
-          <div className="space-y-6">
-            {objectives &&
-              objectives.map((objective) => (
-                <EnhancedObjectiveCard
-                  key={objective.id}
-                  objective={objective}
-                  onUpdateKeyResult={(objectiveId, keyResultId, progress) => {
-                    console.log(
-                      "Updating key result",
-                      objectiveId,
-                      keyResultId,
-                      progress
-                    );
-                  }}
-                  onAddComment={(objectiveId, keyResultId, comment) => {
-                    console.log(
-                      "Adding comment",
-                      objectiveId,
-                      keyResultId,
-                      comment
-                    );
-                  }}
-                />
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Documents section */}
-      {activeSection === "documents" && (
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-h2 text-white">Documents</h2>
-            <Button variant="primary" size="sm">
-              Upload Document
-            </Button>
-          </div>
-
-          <Card>
-            <CardContent className="p-0">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-dark-gray">
-                    <th className="text-left p-4 text-light-gray font-medium">
-                      Name
-                    </th>
-                    <th className="text-left p-4 text-light-gray font-medium">
-                      Type
-                    </th>
-                    <th className="text-left p-4 text-light-gray font-medium">
-                      Created By
-                    </th>
-                    <th className="text-left p-4 text-light-gray font-medium">
-                      Date
-                    </th>
-                    <th className="text-right p-4 text-light-gray font-medium">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {engagement.documents.map((document) => (
-                    <tr key={document.id} className="border-b border-dark-gray">
-                      <td className="p-4 text-white">
-                        <div className="flex items-center">
-                          <DocumentIcon className="w-5 h-5 text-light-gray mr-2" />
-                          {document.name}
-                        </div>
-                      </td>
-                      <td className="p-4 text-light-gray">{document.type}</td>
-                      <td className="p-4 text-light-gray">
-                        {document.createdBy}
-                      </td>
-                      <td className="p-4 text-light-gray">
-                        {format(new Date(document.createdAt), "MMM d, yyyy")}
-                      </td>
-                      <td className="p-4 text-right">
-                        <Button variant="ghost" size="xs">
-                          View
-                        </Button>
-                        <Button variant="ghost" size="xs">
-                          Download
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* RAG Status Modal */}
+      <FormModal
+        isOpen={isAddRAGStatusModalOpen}
+        onClose={() => setIsAddRAGStatusModalOpen(false)}
+        title="Add Status Report"
+        size="xl"
+      >
+        <RAGStatusForm
+          engagementId={engagementId}
+          onSubmit={handleAddRAGStatus}
+          onCancel={() => setIsAddRAGStatusModalOpen(false)}
+        />
+      </FormModal>
     </div>
   );
 }

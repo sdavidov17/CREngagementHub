@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { Button } from "@/components/ui";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import { FormModal } from "@/components/modals/FormModal";
+import { ObjectiveForm } from "@/components/okr/ObjectiveForm";
+import { KeyResultForm } from "@/components/okr/KeyResultForm";
 
 interface KeyResult {
   id: string;
@@ -164,6 +169,11 @@ export default function OKRsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [quarterFilter, setQuarterFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [isAddObjectiveModalOpen, setIsAddObjectiveModalOpen] = useState(false);
+  const [isAddKeyResultModalOpen, setIsAddKeyResultModalOpen] = useState(false);
+  const [selectedObjectiveId, setSelectedObjectiveId] = useState<string | null>(
+    null
+  );
 
   const { data: objectives, isLoading } = useQuery({
     queryKey: ["objectives"],
@@ -242,6 +252,41 @@ export default function OKRsPage() {
 
   const statusCounts = getStatusCounts();
 
+  // Sample data for dropdown options
+  const teamMembers = [
+    { id: "tm-001", name: "John Smith" },
+    { id: "tm-002", name: "Emily Chen" },
+    { id: "tm-003", name: "Michael Johnson" },
+    { id: "tm-004", name: "David Rodriguez" },
+  ];
+
+  const quarters = getQuarters();
+
+  // Handler for adding a new objective (mock implementation)
+  const handleAddObjective = async (data: any) => {
+    console.log("Adding new objective:", data);
+    // In a real app, this would submit to an API
+    // After success, close the modal and maybe refetch data
+    setIsAddObjectiveModalOpen(false);
+    // Refetch objectives if needed
+  };
+
+  // Handler for adding a new key result (mock implementation)
+  const handleAddKeyResult = async (objectiveId: string, data: any) => {
+    console.log(`Adding new key result to objective ${objectiveId}:`, data);
+    // In a real app, this would submit to an API
+    // After success, close the modal and maybe refetch data
+    setIsAddKeyResultModalOpen(false);
+    setSelectedObjectiveId(null);
+    // Refetch objectives if needed
+  };
+
+  // Handler to open the Add Key Result modal for a specific objective
+  const openAddKeyResultModal = (objectiveId: string) => {
+    setSelectedObjectiveId(objectiveId);
+    setIsAddKeyResultModalOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -252,142 +297,133 @@ export default function OKRsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div className="p-6 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 className="text-h1 font-bold text-white">OKRs</h1>
-        <Link
-          href="/okrs/new"
-          className="btn btn-primary rounded-md bg-teal px-4 py-2 font-medium text-navy"
+        <Button
+          variant="primary"
+          onClick={() => setIsAddObjectiveModalOpen(true)}
+          className="flex items-center"
         >
-          New Objective
-        </Link>
+          <PlusIcon className="h-5 w-5 mr-2" />
+          Add Objective
+        </Button>
       </div>
 
-      {/* Status Overview */}
-      <div className="mb-6 grid grid-cols-4 gap-4">
-        <div className="rounded-md bg-secondary-bg p-4">
-          <h2 className="mb-1 text-sm font-medium text-light-gray">On Track</h2>
-          <p className="text-2xl font-bold text-success">
+      {/* Status summary section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-secondary-bg rounded-lg p-4">
+          <div className="text-sm text-light-gray mb-1">On Track</div>
+          <div className="text-h3 font-bold text-success">
             {statusCounts["On Track"] || 0}
-          </p>
+          </div>
         </div>
-        <div className="rounded-md bg-secondary-bg p-4">
-          <h2 className="mb-1 text-sm font-medium text-light-gray">At Risk</h2>
-          <p className="text-2xl font-bold text-warning">
+        <div className="bg-secondary-bg rounded-lg p-4">
+          <div className="text-sm text-light-gray mb-1">At Risk</div>
+          <div className="text-h3 font-bold text-warning">
             {statusCounts["At Risk"] || 0}
-          </p>
+          </div>
         </div>
-        <div className="rounded-md bg-secondary-bg p-4">
-          <h2 className="mb-1 text-sm font-medium text-light-gray">Behind</h2>
-          <p className="text-2xl font-bold text-danger">
+        <div className="bg-secondary-bg rounded-lg p-4">
+          <div className="text-sm text-light-gray mb-1">Behind</div>
+          <div className="text-h3 font-bold text-danger">
             {statusCounts["Behind"] || 0}
-          </p>
+          </div>
         </div>
-        <div className="rounded-md bg-secondary-bg p-4">
-          <h2 className="mb-1 text-sm font-medium text-light-gray">
-            Completed
-          </h2>
-          <p className="text-2xl font-bold text-teal">
+        <div className="bg-secondary-bg rounded-lg p-4">
+          <div className="text-sm text-light-gray mb-1">Completed</div>
+          <div className="text-h3 font-bold text-teal">
             {statusCounts["Completed"] || 0}
-          </p>
+          </div>
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="mb-6 flex flex-wrap gap-4">
-        <div className="flex-grow">
+      {/* Filters section */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1">
           <input
             type="text"
             placeholder="Search objectives..."
-            className="w-full rounded-md border border-dark-gray bg-secondary-bg p-2 text-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-md border border-dark-gray bg-secondary-bg p-2 text-white focus:outline-none focus:ring-1 focus:ring-teal"
           />
         </div>
-        <div>
+        <div className="w-full md:w-48">
           <select
-            className="rounded-md border border-dark-gray bg-secondary-bg p-2 text-white"
             value={quarterFilter}
             onChange={(e) => setQuarterFilter(e.target.value)}
-            aria-label="Quarter Filter"
+            className="w-full rounded-md border border-dark-gray bg-secondary-bg p-2 text-white focus:outline-none focus:ring-1 focus:ring-teal"
           >
             <option value="">All Quarters</option>
-            {getQuarters().map((q) => (
-              <option key={q} value={q}>
-                {q}
+            {quarters.map((quarter) => (
+              <option key={quarter} value={quarter}>
+                {quarter}
               </option>
             ))}
           </select>
         </div>
-        <div>
+        <div className="w-full md:w-48">
           <select
-            className="rounded-md border border-dark-gray bg-secondary-bg p-2 text-white"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            aria-label="Status Filter"
+            className="w-full rounded-md border border-dark-gray bg-secondary-bg p-2 text-white focus:outline-none focus:ring-1 focus:ring-teal"
           >
             <option value="">All Statuses</option>
-            <option value="on track">On Track</option>
-            <option value="at risk">At Risk</option>
-            <option value="behind">Behind</option>
-            <option value="completed">Completed</option>
+            <option value="On Track">On Track</option>
+            <option value="At Risk">At Risk</option>
+            <option value="Behind">Behind</option>
+            <option value="Completed">Completed</option>
           </select>
         </div>
       </div>
 
-      {/* Objectives */}
-      <div className="space-y-4">
+      {/* Objectives list section */}
+      <div className="space-y-6">
         {filteredObjectives.length === 0 ? (
-          <div className="rounded-md bg-secondary-bg p-6 text-center">
-            <p className="text-light-gray">
-              No objectives found matching your criteria.
-            </p>
+          <div className="text-light-gray text-center py-8">
+            No objectives found matching your criteria.
           </div>
         ) : (
           filteredObjectives.map((objective) => (
             <div
               key={objective.id}
-              className="rounded-lg border border-dark-gray bg-secondary-bg p-4 shadow-card"
+              className="bg-secondary-bg rounded-lg p-6 space-y-4"
             >
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h2 className="text-h2 font-bold text-white">
-                    <Link
-                      href={`/okrs/${objective.id}`}
-                      className="hover:text-teal"
-                    >
-                      {objective.title}
-                    </Link>
-                  </h2>
-                  <p className="mt-1 text-small text-light-gray">
+                  <Link
+                    href={`/objectives/${objective.id}`}
+                    className="text-h2 font-bold text-white hover:text-teal transition-colors"
+                  >
+                    {objective.title}
+                  </Link>
+                  <div className="text-light-gray mt-1">
                     {objective.description}
-                  </p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span
-                    className={`status-pill inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusColor(
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-light-gray">
+                    {objective.quarter}
+                  </div>
+                  <div
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
                       objective.status
                     )}`}
                   >
                     {objective.status}
-                  </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="mb-4 flex flex-wrap justify-between gap-y-2 text-small">
-                <div className="flex items-center space-x-4">
-                  <span className="text-light-gray">
-                    Owner: {objective.owner.name}
-                  </span>
-                  <span className="text-light-gray">
-                    Quarter: {objective.quarter}
-                  </span>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="text-sm text-light-gray">
+                  Owner: {objective.owner.name}
                 </div>
-                <div className="flex items-center">
-                  <span className="mr-2 text-light-gray">Progress:</span>
-                  <div className="h-2 w-36 rounded-full bg-dark-gray">
+                <div className="flex items-center gap-3">
+                  <div className="w-24 h-2 bg-dark-gray rounded-full overflow-hidden">
                     <div
-                      className={`h-2 rounded-full ${getProgressColor(
+                      className={`h-full ${getProgressColor(
                         calculateObjectiveProgress(objective.keyResults)
                       )}`}
                       style={{
@@ -397,55 +433,104 @@ export default function OKRsPage() {
                       }}
                     ></div>
                   </div>
-                  <span className="ml-2 text-white">
+                  <div className="text-sm text-light-gray">
                     {calculateObjectiveProgress(objective.keyResults)}%
-                  </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="border-t border-dark-gray pt-4">
-                <h3 className="mb-2 text-h3 font-medium text-white">
-                  Key Results
-                </h3>
-                <ul className="space-y-3">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-white">
+                    Key Results ({objective.keyResults.length})
+                  </h3>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => openAddKeyResultModal(objective.id)}
+                    className="flex items-center"
+                  >
+                    <PlusIcon className="h-4 w-4 mr-1" />
+                    Add Key Result
+                  </Button>
+                </div>
+                <div className="space-y-2">
                   {objective.keyResults.map((kr) => (
-                    <li
+                    <div
                       key={kr.id}
-                      className="flex flex-wrap items-center justify-between gap-2"
+                      className="bg-primary-bg p-4 rounded-lg space-y-2"
                     >
-                      <div className="flex-grow">
-                        <p className="text-small text-white">
+                      <div className="flex justify-between items-center gap-4">
+                        <div className="text-white font-medium">
                           {kr.description}
-                        </p>
+                        </div>
+                        <div
+                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                            kr.status
+                          )}`}
+                        >
+                          {kr.status}
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="h-2 w-24 rounded-full bg-dark-gray sm:w-32">
+                      <div className="flex items-center gap-3">
+                        <div className="w-full h-1.5 bg-dark-gray rounded-full overflow-hidden">
                           <div
-                            className={`h-2 rounded-full ${getProgressColor(
+                            className={`h-full ${getProgressColor(
                               kr.progress
                             )}`}
                             style={{ width: `${kr.progress}%` }}
                           ></div>
                         </div>
-                        <span className="text-small text-white">
+                        <div className="text-xs text-light-gray w-8 text-right">
                           {kr.progress}%
-                        </span>
-                        <span
-                          className={`status-pill inline-flex rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(
-                            kr.status
-                          )}`}
-                        >
-                          {kr.status}
-                        </span>
+                        </div>
                       </div>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             </div>
           ))
         )}
       </div>
+
+      {/* Add Objective Modal */}
+      <FormModal
+        isOpen={isAddObjectiveModalOpen}
+        onClose={() => setIsAddObjectiveModalOpen(false)}
+        title="Add New Objective"
+        size="xl"
+      >
+        <ObjectiveForm
+          owners={teamMembers}
+          quarters={quarters}
+          onSubmit={handleAddObjective}
+          onCancel={() => setIsAddObjectiveModalOpen(false)}
+        />
+      </FormModal>
+
+      {/* Add Key Result Modal */}
+      <FormModal
+        isOpen={isAddKeyResultModalOpen}
+        onClose={() => {
+          setIsAddKeyResultModalOpen(false);
+          setSelectedObjectiveId(null);
+        }}
+        title="Add Key Result"
+        size="xl"
+      >
+        {selectedObjectiveId && (
+          <KeyResultForm
+            objectiveId={selectedObjectiveId}
+            owners={teamMembers}
+            onSubmit={handleAddKeyResult}
+            onCancel={() => {
+              setIsAddKeyResultModalOpen(false);
+              setSelectedObjectiveId(null);
+            }}
+          />
+        )}
+      </FormModal>
     </div>
   );
 }

@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { format } from "date-fns";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { WithFeatureFlag } from "@/components/FeatureToggleProvider";
+import QuickAddEngagement from "@/components/engagement/QuickAddEngagement";
 
 interface Client {
   id: string;
@@ -24,6 +28,7 @@ interface Engagement {
   status: "Active" | "Planned" | "Completed" | "On Hold";
   description: string;
   teamMembers: TeamMember[];
+  health: string;
 }
 
 // Mock data for engagements
@@ -42,6 +47,7 @@ const mockEngagements: Engagement[] = [
       { id: "tm-002", name: "Emily Chen" },
       { id: "tm-003", name: "Michael Johnson" },
     ],
+    health: "On Track",
   },
   {
     id: "eng-002",
@@ -56,6 +62,7 @@ const mockEngagements: Engagement[] = [
       { id: "tm-002", name: "Emily Chen" },
       { id: "tm-004", name: "David Rodriguez" },
     ],
+    health: "On Track",
   },
   {
     id: "eng-003",
@@ -70,6 +77,7 @@ const mockEngagements: Engagement[] = [
       { id: "tm-001", name: "John Smith" },
       { id: "tm-006", name: "Sarah Lee" },
     ],
+    health: "On Track",
   },
   {
     id: "eng-004",
@@ -84,6 +92,7 @@ const mockEngagements: Engagement[] = [
       { id: "tm-005", name: "Lisa Wang" },
       { id: "tm-007", name: "Robert Kim" },
     ],
+    health: "Completed",
   },
   {
     id: "eng-005",
@@ -98,6 +107,7 @@ const mockEngagements: Engagement[] = [
       { id: "tm-005", name: "Lisa Wang" },
       { id: "tm-008", name: "James Wilson" },
     ],
+    health: "At Risk",
   },
 ];
 
@@ -108,18 +118,61 @@ const fetchEngagements = async () => {
   });
 };
 
+// Get mock clients for the QuickAddEngagement component
+const mockClients = [
+  { id: "client-001", name: "RetailX" },
+  { id: "client-002", name: "Global Finance Co." },
+  { id: "client-003", name: "HealthPlus" },
+  { id: "client-004", name: "Manufacturing Inc." },
+  { id: "client-005", name: "TechSolutions" },
+];
+
 export default function EngagementsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [filter, setFilter] = useState("All");
+  const [engagementsList, setEngagementsList] = useState<Engagement[]>([]);
 
   const { data: engagements, isLoading } = useQuery({
     queryKey: ["engagements"],
     queryFn: fetchEngagements,
   });
 
+  // Update engagementsList when data is loaded
+  useEffect(() => {
+    if (engagements) {
+      setEngagementsList(engagements);
+    }
+  }, [engagements]);
+
+  // Handler for adding a new engagement from QuickAddEngagement
+  const handleAddEngagement = (newEngagement: {
+    name: string;
+    clientId: string;
+    startDate: string;
+    status: string;
+  }) => {
+    const client = mockClients.find((c) => c.id === newEngagement.clientId);
+    if (!client) return;
+
+    const engagement: Engagement = {
+      id: `eng-${Math.floor(Math.random() * 1000)}`,
+      name: newEngagement.name,
+      client,
+      startDate: newEngagement.startDate,
+      endDate: null,
+      status: newEngagement.status as any,
+      description: `New engagement with ${client.name}`,
+      teamMembers: [],
+      health: "On Track",
+    };
+
+    setEngagementsList((prev) => [engagement, ...prev]);
+  };
+
   // Filter engagements based on search term and status filter
-  const filteredEngagements = engagements
-    ? engagements.filter((engagement) => {
+  const filteredEngagements = engagementsList
+    ? engagementsList.filter((engagement) => {
         const matchesSearch =
           searchTerm === "" ||
           engagement.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -140,10 +193,10 @@ export default function EngagementsPage() {
 
   // Get counts by status
   const getStatusCounts = () => {
-    if (!engagements)
+    if (!engagementsList)
       return { Active: 0, Planned: 0, Completed: 0, "On Hold": 0 };
 
-    return engagements.reduce((counts, engagement) => {
+    return engagementsList.reduce((counts, engagement) => {
       counts[engagement.status] = (counts[engagement.status] || 0) + 1;
       return counts;
     }, {} as Record<string, number>);
@@ -164,12 +217,20 @@ export default function EngagementsPage() {
     <div className="p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">Engagements</h1>
-        <Link
-          href="/engagements/new"
-          className="rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
-        >
-          New Engagement
-        </Link>
+        <div className="flex items-center">
+          <Link
+            href="/admin/feature-toggles"
+            className="mr-4 text-sm text-teal hover:underline"
+          >
+            Manage Feature Flags
+          </Link>
+          <Link
+            href="/engagements/new"
+            className="rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+          >
+            New Engagement
+          </Link>
+        </div>
       </div>
 
       {/* Status Overview */}
@@ -225,6 +286,59 @@ export default function EngagementsPage() {
           </select>
         </div>
       </div>
+
+      <WithFeatureFlag
+        featureName="feature.engagement-filters"
+        fallback={
+          <div className="mb-4 text-light-gray">Filter options coming soon</div>
+        }
+      >
+        <div className="flex mb-4 gap-2">
+          <Button
+            variant={filter === "All" ? "primary" : "secondary"}
+            onClick={() => setFilter("All")}
+            size="sm"
+          >
+            All
+          </Button>
+          <Button
+            variant={filter === "On Track" ? "primary" : "secondary"}
+            onClick={() => setFilter("On Track")}
+            size="sm"
+          >
+            On Track
+          </Button>
+          <Button
+            variant={filter === "At Risk" ? "primary" : "secondary"}
+            onClick={() => setFilter("At Risk")}
+            size="sm"
+          >
+            At Risk
+          </Button>
+          <Button
+            variant={filter === "Completed" ? "primary" : "secondary"}
+            onClick={() => setFilter("Completed")}
+            size="sm"
+          >
+            Completed
+          </Button>
+        </div>
+      </WithFeatureFlag>
+
+      {/* Quick Add Engagement - Feature Flagged */}
+      <WithFeatureFlag
+        featureName="feature.quick-add-engagement"
+        fallback={
+          <div className="mb-4 text-light-gray">
+            Quick Add Engagement coming soon
+          </div>
+        }
+      >
+        <QuickAddEngagement
+          onAddEngagement={handleAddEngagement}
+          clients={mockClients}
+        />
+      </WithFeatureFlag>
 
       {/* Engagements List */}
       <div className="space-y-4">

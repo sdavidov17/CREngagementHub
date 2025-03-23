@@ -16,6 +16,7 @@ import {
   ExclamationTriangleIcon,
   DocumentTextIcon,
   ArchiveBoxIcon,
+  FlagIcon,
 } from "@heroicons/react/24/outline";
 import Providers from "@/components/Providers";
 
@@ -38,6 +39,10 @@ const navigation = [
   { name: "Notice Board", href: "/notices", icon: DocumentTextIcon },
   { name: "Reports", href: "/reports", icon: ArchiveBoxIcon },
   { name: "Settings", href: "/settings", icon: Cog6ToothIcon },
+];
+
+const adminNavigation = [
+  { name: "Feature Toggles", href: "/admin/feature-toggles", icon: FlagIcon },
 ];
 
 export default function RootLayout({
@@ -83,6 +88,23 @@ export default function RootLayout({
               >
                 <nav className="flex flex-col py-4">
                   {navigation.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className="flex items-center px-4 py-2 text-sm text-white hover:bg-dark/40 hover:text-teal group"
+                    >
+                      <item.icon className="h-5 w-5 mr-3 text-light-gray group-hover:text-teal" />
+                      {item.name}
+                    </Link>
+                  ))}
+
+                  {/* Admin Section */}
+                  <div className="mt-8 mb-2 px-4">
+                    <h5 className="text-xs font-semibold uppercase text-light-gray tracking-wider">
+                      Admin
+                    </h5>
+                  </div>
+                  {adminNavigation.map((item) => (
                     <Link
                       key={item.name}
                       href={item.href}

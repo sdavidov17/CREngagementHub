@@ -18,6 +18,7 @@ A comprehensive Team and Capacity Management application that allows delivery le
 ## Documentation
 
 - [Solution Design](./docs/solution-design.md) - Architecture diagrams and database schema
+- [Feature Toggle System](./docs/feature-toggles.md) - Comprehensive guide to the feature toggle system
 
 ## Technologies
 
@@ -113,19 +114,25 @@ cr-engagement-hub/
 ├── src/
 │   ├── app/                  # Next.js App Router
 │   │   ├── api/              # API routes
+│   │   │   ├── feature-toggles/ # Feature toggle API endpoints
 │   │   ├── (auth)/           # Authentication pages
 │   │   ├── dashboard/        # Dashboard and authenticated pages
 │   │   ├── clients/          # Client pages and [id] dynamic routes
 │   │   ├── engagements/      # Engagement pages and [id] dynamic routes
 │   │   ├── team/             # Team management pages
 │   │   ├── okrs/             # OKR tracking pages
+│   │   ├── admin/            # Admin pages
+│   │   │   ├── feature-toggles/ # Feature toggle management UI
 │   │   ├── components/       # Reusable components
+│   │   │   ├── FeatureToggleProvider.tsx # Feature toggle context provider
 │   │   │   ├── ui/           # Core UI components (ClearRoute design system)
 │   │   │   │   ├── Badge.tsx # Status and information badges
 │   │   │   │   ├── Button.tsx # Buttons with variants
 │   │   │   │   ├── Card.tsx   # Content container cards
 │   │   │   │   ├── ProgressBar.tsx # Progress visualization
 │   │   │   │   ├── StatusBadge.tsx # Status indicators
+│   │   ├── engagement/       # Engagement-related components
+│   │   │   ├── QuickAddEngagement.tsx # Quick form for adding engagements
 │   │   ├── metrics/          # Metrics visualization components
 │   │   ├── governance/       # Governance and meeting components
 │   │   ├── notice/           # Notice board components
@@ -133,6 +140,7 @@ cr-engagement-hub/
 │   │   ├── rag/              # RAG status tracking components
 │   │   ├── lib/              # Utility functions and services
 │   │   ├── types/            # TypeScript type definitions
+│   │   │   ├── feature-toggle.ts # Feature toggle type definitions
 │   │   │   ├── governance.ts # Governance type definitions
 │   │   │   ├── metrics.ts    # Success metrics type definitions
 │   │   │   ├── notice.ts     # Notice board type definitions
@@ -141,7 +149,7 @@ cr-engagement-hub/
 │   │   ├── prisma/           # Prisma schema and migrations
 │   │   │   ├── schema.prisma # Database schema
 │   │   │   ├── seed.ts       # Seed script
-│   │   └── public/           # Static assets
+│   └── public/               # Static assets
 ├── docs/                     # Documentation
 │   ├── solution-design.md    # Architecture and database diagrams
 ```
@@ -194,6 +202,89 @@ The ClearRoute design system follows these guidelines:
   - Card: 8px border radius, 16px padding, 2px blur box shadow
   - Buttons: Multiple variants with consistent padding and hover states
   - Badges: Rounded pill shape for statuses and indicators
+
+## Feature Toggle System
+
+The CR Engagement Hub includes a comprehensive feature toggle system that enables:
+
+- Deploying code to production without exposing in-progress features
+- Enabling features selectively for different users or environments
+- A/B testing new functionality
+- Quick disabling of problematic features without code deployment
+
+### Feature Flag Types
+
+Feature flags are grouped into three categories:
+
+- **Core Features**: Fundamental features that are enabled by default (`core.*`)
+- **New Features**: Recently added features that may be toggled (`feature.*`)
+- **Experimental Features**: Experimental functionality for testing (`experimental.*`)
+
+### Currently Implemented Flags
+
+| Flag Name | Default | Description |
+|-----------|---------|-------------|
+| `core.okr-tracking` | Enabled | OKR tracking functionality |
+| `core.team-management` | Enabled | Team roster and management |
+| `core.client-overview` | Enabled | Client management and overview |
+| `core.engagement-management` | Enabled | Engagement creation and management |
+| `feature.rag-status-tracking` | Enabled | Red/Amber/Green status tracking |
+| `feature.success-metrics` | Enabled | Success metrics visualization |
+| `feature.notice-board` | Enabled | Company notice board |
+| `feature.meeting-agenda-builder` | Enabled | Meeting agenda creation tools |
+| `feature.stakeholder-mapping` | Enabled | Stakeholder relationship mapping |
+| `feature.engagement-filters` | Enabled | Advanced engagement list filtering |
+| `feature.quick-add-engagement` | Disabled | Quick engagement creation form |
+| `experimental.ai-recommendations` | Disabled | AI-powered recommendations |
+| `experimental.data-visualization` | Disabled | Advanced data visualization |
+| `experimental.automated-reporting` | Disabled | Automated report generation |
+
+### Using Feature Toggles in Components
+
+To conditionally render UI elements based on feature flags, use the `WithFeatureFlag` component:
+
+```tsx
+import { WithFeatureFlag } from "@/components/FeatureToggleProvider";
+
+// Simple usage
+<WithFeatureFlag featureName="feature.quick-add-engagement">
+  <QuickAddEngagement onAddEngagement={handleAddEngagement} clients={clients} />
+</WithFeatureFlag>
+
+// With fallback content
+<WithFeatureFlag 
+  featureName="feature.engagement-filters"
+  fallback={<div>Filter options coming soon</div>}
+>
+  <FilterControls />
+</WithFeatureFlag>
+```
+
+### Managing Feature Flags
+
+Feature flags can be managed in several ways:
+
+1. **Environment Variables**: Set variables in the format `FEATURE_CORE_OKR_TRACKING=true`
+2. **Admin Interface**: Access `/admin/feature-toggles` to toggle features in the UI (requires admin access)
+3. **Code**: Programmatically set flags using the feature toggle service:
+
+```tsx
+import { setFeatureFlag } from '@/lib/feature-toggle';
+
+// Enable a feature
+setFeatureFlag('feature.quick-add-engagement', true);
+```
+
+### Adding New Feature Flags
+
+To add a new feature flag, update the `defaultFeatures` object in `src/lib/feature-toggle.ts`:
+
+```ts
+const defaultFeatures: FeatureFlags = {
+  // Existing flags...
+  'feature.my-new-feature': false, // disabled by default
+};
+```
 
 ## Development
 
