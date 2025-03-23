@@ -32,6 +32,178 @@ graph TD
     Middleware --> NextAPI
 ```
 
+## Local Development Infrastructure
+
+```mermaid
+graph TD
+    subgraph "Developer Workstation"
+        NextDev[Next.js Dev Server]
+        NodeJS[Node.js Runtime]
+        NPM[NPM Scripts]
+        IDE[Code Editor/IDE]
+        Git[Git Client]
+        subgraph "Docker Environment"
+            DockerCLI[Docker CLI]
+            Postgres[PostgreSQL Container]
+            PrismaStudio[Prisma Studio]
+        end
+    end
+
+    subgraph "Development Tools"
+        GitHub[GitHub Repository]
+        Testing[Jest Testing Framework]
+        Linting[ESLint]
+        TypeChecking[TypeScript Compiler]
+    end
+
+    IDE --> Git
+    Git --> GitHub
+    NPM --> NextDev
+    NPM --> Testing
+    NPM --> Linting
+    NPM --> TypeChecking
+    NPM --> DockerCLI
+    DockerCLI --> Postgres
+    NextDev --> NodeJS
+    Postgres --> PrismaStudio
+    NextDev --> Postgres
+    
+    classDef container fill:#1b91ff,color:white;
+    class Postgres,PrismaStudio container;
+```
+
+## Deployment Pipeline
+
+```mermaid
+flowchart TD
+    subgraph "CI/CD Pipeline"
+        GH[GitHub Repository]
+        Actions[GitHub Actions]
+        Build[Build Process]
+        Test[Testing]
+        Static[Static Analysis]
+    end
+    
+    subgraph "Deployment Environments"
+        subgraph "Development"
+            DevDeploy[Development Deployment]
+            DevDB[(Dev Database)]
+        end
+        
+        subgraph "Staging"
+            StageDeploy[Staging Deployment]
+            StageDB[(Staging Database)]
+        end
+        
+        subgraph "Production"
+            BlueEnv[Blue Environment]
+            GreenEnv[Green Environment]
+            ProdDB[(Production Database)]
+            CDN[CDN]
+            LoadBalancer{Load Balancer}
+        end
+    end
+    
+    GH --> Actions
+    Actions --> Build
+    Build --> Test
+    Test --> Static
+    
+    Static --> DevDeploy
+    DevDeploy --> DevDB
+    
+    DevDeploy -- "Promotion" --> StageDeploy
+    StageDeploy --> StageDB
+    
+    StageDeploy -- "Promotion" --> BlueEnv & GreenEnv
+    BlueEnv & GreenEnv --> ProdDB
+    
+    LoadBalancer --> BlueEnv
+    LoadBalancer --> GreenEnv
+    BlueEnv & GreenEnv --> CDN
+    
+    classDef env fill:#59b353,color:white;
+    classDef db fill:#3178c6,color:white;
+    class DevDeploy,StageDeploy,BlueEnv,GreenEnv env;
+    class DevDB,StageDB,ProdDB db;
+```
+
+## Feature Toggle Architecture
+
+```mermaid
+graph TD
+    subgraph "Feature Toggle System"
+        ToggleConfig[Toggle Configuration]
+        ToggleService[Feature Toggle Service]
+        ToggleAPI[Toggle Management API]
+        ToggleUI[Toggle Dashboard UI]
+    end
+    
+    subgraph "Application"
+        Components[UI Components]
+        Routes[Application Routes]
+        API[API Endpoints]
+    end
+    
+    subgraph "Configuration Sources"
+        EnvVars[Environment Variables]
+        RemoteConfig[Remote Configuration]
+        Database[(Database Settings)]
+    end
+    
+    EnvVars --> ToggleConfig
+    RemoteConfig --> ToggleConfig
+    Database --> ToggleConfig
+    
+    ToggleConfig --> ToggleService
+    ToggleService --> Components
+    ToggleService --> Routes
+    ToggleService --> API
+    
+    ToggleAPI --> ToggleService
+    ToggleUI --> ToggleAPI
+    
+    classDef config fill:#ff9900,color:white;
+    classDef app fill:#59b353,color:white;
+    class ToggleConfig,ToggleService,ToggleAPI,ToggleUI config;
+    class Components,Routes,API app;
+```
+
+## Rollback Strategy
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant CI as CI/CD Pipeline
+    participant LB as Load Balancer
+    participant Blue as Blue Environment
+    participant Green as Green Environment
+    participant DB as Database
+    
+    Note over Blue,Green: Active-Passive Blue/Green Deployment
+    
+    Dev->>CI: Push code changes
+    CI->>CI: Build & test
+    CI->>Green: Deploy to inactive environment (Green)
+    Note over Green: Run smoke tests
+    Green->>Green: Smoke tests pass
+    
+    Green->>LB: Update routing
+    LB->>Green: Route 10% traffic
+    Note over Green: Monitor for errors
+    
+    alt If issues detected
+        LB->>Blue: Revert 100% to Blue (active)
+        Green->>Green: Diagnose & fix
+    else If no issues
+        LB->>Green: Gradually increase traffic
+        LB->>Green: 100% traffic to Green
+        Blue->>Blue: Now becomes inactive
+    end
+    
+    Note over Blue,Green: Blue & Green have now swapped roles
+```
+
 ## Database Schema
 
 ```mermaid
@@ -205,6 +377,16 @@ erDiagram
         string entityType
         string entityId FK
         string uploadedBy FK
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    FeatureToggle {
+        string id PK
+        string name
+        string description
+        boolean enabled
+        string scope
         datetime createdAt
         datetime updatedAt
     }
